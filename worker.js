@@ -109,6 +109,39 @@ async function handleRequest(request) {
       headers: iconHeaders
     });
   }
+
+  // Serve 192x192 PNG icon for PWA (Chrome requires rasterized icons for install)
+  if (url.pathname === '/icon-192.png') {
+    let iconRes = await fetch('https://fonts.gstatic.com/s/i/productlogos/classroom/v8/192px.png');
+    if (!iconRes.ok) {
+      iconRes = await fetch('https://ssl.gstatic.com/classroom/favicon.png');
+    }
+    const iconHeaders = new Headers(iconRes.headers);
+    iconHeaders.set('Content-Type', 'image/png');
+    iconHeaders.set('Cache-Control', 'public, max-age=86400');
+    return new Response(iconRes.body, {
+      status: iconRes.status,
+      headers: iconHeaders
+    });
+  }
+
+  // Serve 512x512 PNG icon for PWA splash screen
+  if (url.pathname === '/icon-512.png') {
+    let iconRes = await fetch('https://fonts.gstatic.com/s/i/productlogos/classroom/v8/512px.png');
+    if (!iconRes.ok) {
+      iconRes = await fetch('https://fonts.gstatic.com/s/i/productlogos/classroom/v8/192px.png');
+    }
+    if (!iconRes.ok) {
+      iconRes = await fetch('https://ssl.gstatic.com/classroom/favicon.png');
+    }
+    const iconHeaders = new Headers(iconRes.headers);
+    iconHeaders.set('Content-Type', 'image/png');
+    iconHeaders.set('Cache-Control', 'public, max-age=86400');
+    return new Response(iconRes.body, {
+      status: iconRes.status,
+      headers: iconHeaders
+    });
+  }
   
   // Proxy everything else to CloudMoon
   return proxyCloudMoon(request);
@@ -359,10 +392,11 @@ async function proxyCloudMoon(request) {
   
   // Intercept window.open for games - now proxy through worker
   var origOpen = window.open;
+  var workerOrigin = window.location.origin;
   window.open = function(u, t, f) {
-    if (u && u.indexOf("run-site") > -1) {
+    if (u && u.indexOf('/run-site/') > -1) {
       if (window.parent && window.parent !== window) {
-        window.parent.postMessage({type: "LOAD_GAME", url: u}, "*");
+        window.parent.postMessage({type: "LOAD_GAME", url: u}, workerOrigin);
       } else {
         window.location.href = u;
       }
@@ -370,6 +404,18 @@ async function proxyCloudMoon(request) {
     }
     return origOpen.call(this, u, t, f);
   };
+  
+  // Intercept anchor clicks for games (CloudMoon may use <a target="_blank"> instead of window.open)
+  document.addEventListener('click', function(e) {
+    var a = e.target.closest('a');
+    if (a && a.href && a.href.indexOf('/run-site/') > -1) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({type: "LOAD_GAME", url: a.href}, workerOrigin);
+      }
+    }
+  }, true);
   
   // Listen for fullscreen requests from parent
   window.addEventListener('message', function(event) {
@@ -823,6 +869,7 @@ function getMainHTML() {
         });
         
         window.addEventListener('message', (event) => {
+            if (event.origin !== window.location.origin) return;
             if (event.data && event.data.type === 'LOAD_GAME') {
                 const gameUrl = event.data.url;
                 console.log('Game URL received:', gameUrl);
@@ -966,10 +1013,22 @@ function getManifest() {
     
     "icons": [
       {
+        "src": "/icon-192.png",
+        "sizes": "192x192",
+        "type": "image/png",
+        "purpose": "any maskable"
+      },
+      {
+        "src": "/icon-512.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "any maskable"
+      },
+      {
         "src": "/icon.svg",
         "sizes": "any",
         "type": "image/svg+xml",
-        "purpose": "any maskable"
+        "purpose": "any"
       }
     ],
     
@@ -981,8 +1040,8 @@ function getManifest() {
 
 function getServiceWorker() {
   return `// CloudMoon InPlay Service Worker
-const CACHE_NAME = 'cloudmoon-v2';
-const RUNTIME_CACHE = 'cloudmoon-runtime-v2';
+const CACHE_NAME = 'cloudmoon-v3';
+const RUNTIME_CACHE = 'cloudmoon-runtime-v3';
 
 // Install event - cache essential resources
 self.addEventListener('install', (event) => {
@@ -995,7 +1054,9 @@ self.addEventListener('install', (event) => {
         '/manifest.json',
         '/sw.js',
         '/favicon.png',
-        '/icon.svg'
+        '/icon.svg',
+        '/icon-192.png',
+        '/icon-512.png'
       ]);
     }).then(() => {
       return self.skipWaiting();
@@ -1026,6 +1087,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   // Skip cross-origin requests - let browser handle them
   if (!event.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
+  // Skip dynamic game session and proxy requests - these can't be meaningfully cached
+  const reqPath = new URL(event.request.url).pathname;
+  if (reqPath.startsWith('/run-site/') || reqPath.startsWith('/proxy/')) {
     return;
   }
 
