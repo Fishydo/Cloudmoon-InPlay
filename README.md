@@ -25,15 +25,25 @@ Optional second DOM Embed layer (Recommended if under heavy restrictions, to use
   <head>
     <meta charset="UTF-8" />
     <title>Home - Classroom</title>
+    <link
+      rel="icon"
+      type="image/png"
+      href="https://ssl.gstatic.com/classroom/favicon.png"
+    />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <style>
-      /* Ensure the container takes up the full viewport */
       html,
       body {
         margin: 0;
         padding: 0;
+        width: 100%;
         height: 100%;
         overflow: hidden;
+        background: #000;
       }
+
       full-page-frame {
         display: block;
         width: 100%;
@@ -41,21 +51,23 @@ Optional second DOM Embed layer (Recommended if under heavy restrictions, to use
       }
     </style>
   </head>
+
+// WORKER URL HERE
+
   <body>
-    <!-- Custom element that will hold the triple Shadow DOM -->
-    <full-page-frame
-      src="Worker"  <!-- Replace with your own proxy / Cloudflare Worker -->
-    ></full-page-frame>
+    <full-page-frame src="ADD WORKER URL"></full-page-frame>
+
+// WORKER URL HERE
+
     <script>
       class FullPageFrame extends HTMLElement {
         connectedCallback() {
-          // Layer 1: First Shadow DOM
+          // Layer 1
           const shadow1 = this.attachShadow({ mode: "closed" });
-          
-          // Create first layer container
+
           const layer1Container = document.createElement("div");
-          layer1Container.setAttribute("id", "layer1");
-          
+          layer1Container.id = "layer1";
+
           const style1 = document.createElement("style");
           style1.textContent = `
             #layer1 {
@@ -64,16 +76,16 @@ Optional second DOM Embed layer (Recommended if under heavy restrictions, to use
               display: block;
             }
           `;
-          
+
           shadow1.appendChild(style1);
           shadow1.appendChild(layer1Container);
-          
-          // Layer 2: Second Shadow DOM (nested)
+
+          // Layer 2
           const shadow2 = layer1Container.attachShadow({ mode: "closed" });
-          
+
           const layer2Container = document.createElement("div");
-          layer2Container.setAttribute("id", "layer2");
-          
+          layer2Container.id = "layer2";
+
           const style2 = document.createElement("style");
           style2.textContent = `
             #layer2 {
@@ -82,16 +94,16 @@ Optional second DOM Embed layer (Recommended if under heavy restrictions, to use
               display: block;
             }
           `;
-          
+
           shadow2.appendChild(style2);
           shadow2.appendChild(layer2Container);
-          
-          // Layer 3: Third Shadow DOM (nested)
+
+          // Layer 3
           const shadow3 = layer2Container.attachShadow({ mode: "closed" });
-          
+
           const layer3Container = document.createElement("div");
-          layer3Container.setAttribute("id", "layer3");
-          
+          layer3Container.id = "layer3";
+
           const style3 = document.createElement("style");
           style3.textContent = `
             #layer3 {
@@ -99,40 +111,88 @@ Optional second DOM Embed layer (Recommended if under heavy restrictions, to use
               height: 100%;
               display: block;
             }
+
             iframe {
               width: 100%;
               height: 100%;
               border: none;
               display: block;
+              background: #fff;
             }
           `;
-          
+
           shadow3.appendChild(style3);
           shadow3.appendChild(layer3Container);
-          
-          // Final iframe in the innermost layer
+
+          // Create iframe
           const iframe = document.createElement("iframe");
           iframe.src = this.getAttribute("src");
-          
-          // Additional security attributes
-          iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox");
+
+          // Allow fullscreen
+          iframe.setAttribute(
+            "allow",
+            "fullscreen; autoplay; clipboard-read; clipboard-write"
+          );
+
+          iframe.setAttribute("allowfullscreen", "");
+
+          iframe.setAttribute(
+            "sandbox",
+            [
+              "allow-scripts",
+              "allow-same-origin",
+              "allow-forms",
+              "allow-popups",
+              "allow-popups-to-escape-sandbox",
+              "allow-modals",
+              "allow-downloads",
+              "allow-presentation",
+              "allow-fullscreen"
+            ].join(" ")
+          );
+
           iframe.setAttribute("referrerpolicy", "no-referrer");
-          
+
           layer3Container.appendChild(iframe);
-          
-          // Optional: Add random attributes to obfuscate structure
+
+          // Send title + favicon to iframe via postMessage
+          iframe.addEventListener("load", () => {
+            try {
+              iframe.contentWindow.postMessage(
+                {
+                  type: "syncBranding",
+                  title: document.title,
+                  favicon:
+                    "https://ssl.gstatic.com/classroom/favicon.png"
+                },
+                "*"
+              );
+            } catch (e) {
+              console.warn("Brand sync failed:", e);
+            }
+          });
+
+          // Obfuscation
           this.setAttribute("data-component", this.generateRandomId());
-          layer1Container.setAttribute("data-layer", this.generateRandomId());
-          layer2Container.setAttribute("data-layer", this.generateRandomId());
-          layer3Container.setAttribute("data-layer", this.generateRandomId());
+          layer1Container.setAttribute(
+            "data-layer",
+            this.generateRandomId()
+          );
+          layer2Container.setAttribute(
+            "data-layer",
+            this.generateRandomId()
+          );
+          layer3Container.setAttribute(
+            "data-layer",
+            this.generateRandomId()
+          );
         }
-        
+
         generateRandomId() {
           return Math.random().toString(36).substring(2, 15);
         }
       }
-      
-      // Register the custom element
+
       customElements.define("full-page-frame", FullPageFrame);
     </script>
   </body>
