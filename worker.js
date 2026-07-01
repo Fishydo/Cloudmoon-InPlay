@@ -200,6 +200,75 @@ async function proxyCloudMoon(request) {
     height: 0 !important;
     overflow: hidden !important;
   }
+  
+  @keyframes rotateIn {
+    from {
+      opacity: 0;
+      transform: rotate(-180deg) scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: rotate(0deg) scale(1);
+    }
+  }
+  
+  @keyframes rotateOut {
+    from {
+      opacity: 1;
+      transform: rotate(0deg) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: rotate(180deg) scale(0.8);
+    }
+  }
+  
+  #cm-fullscreen-fs-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(45, 45, 45, 0.9);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #e0e0e0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    z-index: 999999;
+    transition: all 0.3s ease;
+    animation: rotateIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  
+  #cm-fullscreen-fs-btn:hover {
+    background: rgba(74, 74, 74, 0.95);
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+  }
+  
+  #cm-fullscreen-fs-btn:active {
+    transform: scale(0.95);
+  }
+  
+  #cm-fullscreen-fs-btn.exit-mode {
+    background: rgba(200, 60, 60, 0.9);
+  }
+  
+  #cm-fullscreen-fs-btn.exit-mode:hover {
+    background: rgba(220, 80, 80, 0.95);
+  }
+  
+  #cm-fullscreen-fs-btn svg {
+    width: 28px;
+    height: 28px;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
 </style>
 <script id="cm-fix-js">
 (function(){
@@ -408,6 +477,110 @@ async function proxyCloudMoon(request) {
     }
   }
   
+  // Create and manage the fullscreen button for svelte-5yhogn element
+  function createFullscreenButton() {
+    if (document.querySelector('#cm-fullscreen-fs-btn')) return;
+    
+    const btn = document.createElement('button');
+    btn.id = 'cm-fullscreen-fs-btn';
+    btn.title = 'Toggle Fullscreen';
+    btn.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6v4m12-4h4v4M6 18h4v-4m8 4h-4v-4"/></svg>';
+    
+    let isFullscreen = false;
+    let targetElement = null;
+    let originalParent = null;
+    let originalNextSibling = null;
+    let originalStyle = null;
+    
+    btn.addEventListener('click', function() {
+      targetElement = document.querySelector('.svelte-5yhogn');
+      
+      if (!targetElement) {
+        console.warn('[cm-fs] Could not find .svelte-5yhogn element');
+        return;
+      }
+      
+      if (!isFullscreen) {
+        // Enter fullscreen
+        originalParent = targetElement.parentNode;
+        originalNextSibling = targetElement.nextSibling;
+        originalStyle = targetElement.getAttribute('style') || '';
+        
+        // Store computed styles
+        const computedStyle = window.getComputedStyle(targetElement);
+        
+        // Move to body and fullscreen
+        document.body.appendChild(targetElement);
+        targetElement.style.position = 'fixed';
+        targetElement.style.top = '0';
+        targetElement.style.left = '0';
+        targetElement.style.width = '100vw';
+        targetElement.style.height = '100vh';
+        targetElement.style.zIndex = '999998';
+        targetElement.style.margin = '0';
+        targetElement.style.padding = '0';
+        targetElement.style.border = 'none';
+        targetElement.style.maxWidth = 'none';
+        targetElement.style.maxHeight = 'none';
+        
+        btn.classList.add('exit-mode');
+        isFullscreen = true;
+        
+        // Try to request fullscreen API if available
+        if (targetElement.requestFullscreen) {
+          targetElement.requestFullscreen().catch(() => {});
+        }
+      } else {
+        // Exit fullscreen
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+        
+        // Restore element
+        if (originalParent) {
+          if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
+            originalParent.insertBefore(targetElement, originalNextSibling);
+          } else {
+            originalParent.appendChild(targetElement);
+          }
+        }
+        
+        // Restore original styles
+        if (originalStyle) {
+          targetElement.setAttribute('style', originalStyle);
+        } else {
+          targetElement.removeAttribute('style');
+        }
+        
+        btn.classList.remove('exit-mode');
+        isFullscreen = false;
+      }
+    });
+    
+    // Listen for fullscreen exit events
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement && isFullscreen) {
+        // User exited fullscreen via ESC key
+        if (originalParent && targetElement) {
+          if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
+            originalParent.insertBefore(targetElement, originalNextSibling);
+          } else {
+            originalParent.appendChild(targetElement);
+          }
+        }
+        if (originalStyle && targetElement) {
+          targetElement.setAttribute('style', originalStyle);
+        } else if (targetElement) {
+          targetElement.removeAttribute('style');
+        }
+        btn.classList.remove('exit-mode');
+        isFullscreen = false;
+      }
+    });
+    
+    document.body.appendChild(btn);
+  }
+  
   // Protect fullscreen button overlay from being modified
   function protectFullscreenButton() {
     // Create a style to protect the overlay from page modifications
@@ -462,6 +635,7 @@ async function proxyCloudMoon(request) {
   removeUIElements();
   hideSidebarItems();
   protectFullscreenButton();
+  createFullscreenButton();
   
   // Run immediately
   fixButtons();
@@ -474,6 +648,7 @@ async function proxyCloudMoon(request) {
       removeUIElements();
       hideSidebarItems();
       protectFullscreenButton();
+      createFullscreenButton();
     });
   }
   
@@ -484,6 +659,7 @@ async function proxyCloudMoon(request) {
     removeUIElements();
     hideSidebarItems();
     protectFullscreenButton();
+    createFullscreenButton();
   });
   
   // Run every 200ms (balanced performance and ad blocking)
@@ -493,6 +669,9 @@ async function proxyCloudMoon(request) {
     removeUIElements();
     hideSidebarItems();
     protectFullscreenButton();
+    if (!document.querySelector('#cm-fullscreen-fs-btn')) {
+      createFullscreenButton();
+    }
   }, 200);
   
   // MutationObserver
@@ -502,6 +681,9 @@ async function proxyCloudMoon(request) {
     removeUIElements();
     hideSidebarItems();
     protectFullscreenButton();
+    if (!document.querySelector('#cm-fullscreen-fs-btn')) {
+      createFullscreenButton();
+    }
   });
   
   function startObserver() {
