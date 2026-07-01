@@ -141,17 +141,14 @@ async function proxyCloudMoon(request) {
         targetURL += url.search;
       }
     } catch (e) {
-      console.error("Failed to decode proxy URL:", encodedURL);
       return new Response("Invalid proxy URL", { status: 400 });
     }
   } else {
     targetURL = "https://web.cloudmoonapp.com" + url.pathname + url.search;
   }
   if (isAdRequest(targetURL)) {
-    console.log("[Ad Blocked] Blocked an add URL request for recource savings:", targetURL);
     return new Response("", { status: 204 });
   }
-  console.log("Proxying:", targetURL);
   const headers = new Headers(request.headers);
   headers.set("Host", new URL(targetURL).host);
   headers.delete("cf-connecting-ip");
@@ -171,11 +168,9 @@ async function proxyCloudMoon(request) {
   try {
     response = await fetch(proxyRequest);
   } catch (error) {
-    console.error("Proxy fetch failed:", error);
     return new Response("Failed to fetch resource", { status: 502 });
   }
   if (response.status === 404) {
-    console.log("[Worker] Resource could not found (404):", targetURL);
   }
   const newHeaders = new Headers(response.headers);
   newHeaders.set("Access-Control-Allow-Origin", "*");
@@ -213,7 +208,6 @@ async function proxyCloudMoon(request) {
   window.fetch = function(...args) {
     const url = args[0];
     if (typeof url === 'string' && isAdUrl(url)) {
-      console.log('[Ad Blocked] An add has been blocked to save client recources from', url);
       return Promise.reject(new Error('Ad blocked'));
     }
     return originalFetch.apply(this, args);
@@ -222,7 +216,6 @@ async function proxyCloudMoon(request) {
   const originalXHR = window.XMLHttpRequest.prototype.open;
   window.XMLHttpRequest.prototype.open = function(method, url) {
     if (isAdUrl(url)) {
-      console.log('[Ad Blocked] An add has been blocked to save client recources from', url);
       return;
     }
     return originalXHR.apply(this, arguments);
@@ -274,6 +267,31 @@ async function proxyCloudMoon(request) {
     });
   }
   
+  // Hide sidebar items matching specific patterns
+  function hideSidebarItems() {
+    const TARGETS = [
+      /^full\\s*screen\\s*with\\s*ads$/i,
+      /^remove\\s*ads$/i
+    ];
+
+    const normalize = s => (s||'').replace(/\\s+/g,' ').trim().toLowerCase();
+    const items = Array.from(document.querySelectorAll('.sidebar-panel-item, .sidebar-panel-item.svelte-129hoe0'));
+
+    items.forEach(item => {
+      try {
+        const titleEl = item.querySelector('.sidebar-panel-title');
+        const text = normalize(titleEl ? titleEl.textContent : item.textContent);
+        for (const re of TARGETS) {
+          if (re.test(text)) {
+            item.style.display = 'none';
+            item.setAttribute('data-hidden-by-script', 'true');
+            break;
+          }
+        }
+      } catch (e) {}
+    });
+  }
+  
   function fixButtons() {
     var allBtns = document.querySelectorAll("button.google-button");
     for (var i = 0; i < allBtns.length; i++) {
@@ -306,6 +324,7 @@ async function proxyCloudMoon(request) {
   
   // Run ad removal immediately
   removeAds();
+  hideSidebarItems();
   
   // Run immediately
   fixButtons();
@@ -315,7 +334,7 @@ async function proxyCloudMoon(request) {
     document.addEventListener("DOMContentLoaded", function() {
       fixButtons();
       removeAds();
-      console.log('[Worker] DOM ready, all ads have been removed');
+      hideSidebarItems();
     });
   }
   
@@ -323,19 +342,21 @@ async function proxyCloudMoon(request) {
   window.addEventListener("load", function() {
     fixButtons();
     removeAds();
-    console.log('[Worker] Window sucessfully loaded, all ads have been removed');
+    hideSidebarItems();
   });
   
   // Run every 200ms (balanced performance and ad blocking)
   setInterval(function() {
     fixButtons();
     removeAds();
+    hideSidebarItems();
   }, 200);
   
   // MutationObserver
   var observer = new MutationObserver(function() {
     fixButtons();
     removeAds();
+    hideSidebarItems();
   });
   
   function startObserver() {
@@ -389,7 +410,7 @@ async function proxyCloudMoon(request) {
       sendGameUrl(u);
       return makeFakeWindow();
     }
-    // about:blank / no-URL pattern \u2014 return fake window to capture subsequent location.href set
+    // about:blank / no-URL pattern — return fake window to capture subsequent location.href set
     if (!u || u === '' || u === 'about:blank') {
       return makeFakeWindow();
     }
@@ -522,8 +543,6 @@ async function proxyCloudMoon(request) {
           document.removeEventListener('webkitfullscreenchange', fullscreenExitHandler);
           document.removeEventListener('mozfullscreenchange', fullscreenExitHandler);
           document.removeEventListener('MSFullscreenChange', fullscreenExitHandler);
-          
-          console.log('[Worker] Fullscreen exited by client, UI has been restored sucessfully');
         };
         
         // Add listeners for fullscreen exit (cross-browser)
@@ -531,18 +550,13 @@ async function proxyCloudMoon(request) {
         document.addEventListener('webkitfullscreenchange', fullscreenExitHandler);
         document.addEventListener('mozfullscreenchange', fullscreenExitHandler);
         document.addEventListener('MSFullscreenChange', fullscreenExitHandler);
-        
-        console.log('[Worker] Game container fullscreen requested from client with UI overlay');
       } else {
-        console.log('[Worker] Game container not found, using document fullscreen temporarialy');
         if (document.documentElement.requestFullscreen) {
           document.documentElement.requestFullscreen();
         }
       }
     }
   });
-  
-  console.log("[Worker] Initialized with ad blocking to save client recources");
 })();
 <\/script>`;
     if (html.includes("</head>")) {
@@ -559,7 +573,6 @@ async function proxyCloudMoon(request) {
   if (contentType.includes("javascript") || contentType.includes("application/x-javascript")) {
     const targetUrlLower = targetURL.toLowerCase();
     if (isAdRequest(targetURL)) {
-      console.log("[Ad Blocked] Blocked ad script to save client recources:", targetURL);
       return new Response("// Ad script blocked", {
         status: 200,
         headers: { "Content-Type": "application/javascript" }
@@ -646,7 +659,7 @@ function getMainHTML() {
             outline: none;
         }
 
-        /* Floating button dock \u2014 bottom left */
+        /* Floating button dock — bottom left */
         #btn-dock {
             position: fixed;
             bottom: 18px;
@@ -727,8 +740,8 @@ function getMainHTML() {
         let shadowRoots = [];
         let currentIframe = null;
         
-        const SANDBOX_HOME = 'allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock allow-top-navigation-by-user-activation';
-        const SANDBOX_GAME = 'allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock allow-top-navigation-by-user-activation';
+        const SANDBOX_HOME = 'allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock allow-top-navigation allow-storage-access-by-user-activation';
+        const SANDBOX_GAME = 'allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock allow-top-navigation allow-storage-access-by-user-activation';
         const ALLOW_PERMISSIONS = 'accelerometer; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; clipboard-read; clipboard-write; xr-spatial-tracking; gamepad';
         
         const SHADOW_LAYERS = 4;
@@ -768,8 +781,6 @@ function getMainHTML() {
                     
                     shadowRoot.appendChild(nextHost);
                     currentHost = nextHost;
-                    
-                    console.log('[Worker] Shadow DOM created sucessfully');
                 } else {
                     const iframe = document.createElement('iframe');
                     iframe.style.width = '100%';
@@ -800,14 +811,9 @@ function getMainHTML() {
                     });
                     
                     iframe.addEventListener('error', (e) => {
-                        console.error('Iframe error:', e);
                     });
-                    
-                    console.log('[Worker] Fianal Shadow DOM created sucessfully');
                 }
             }
-            
-            console.log('[Worker] Layer shadow DOM Active');
         }
         
         function generateRandomId() {
@@ -844,7 +850,6 @@ function getMainHTML() {
             if (event.origin !== window.location.origin) return;
             if (event.data && event.data.type === 'LOAD_GAME') {
                 const gameUrl = event.data.url;
-                console.log('[Worker] Game streem / URL received to be redirected to the client:', gameUrl);
                 loadGame(gameUrl);
             }
         });
@@ -857,19 +862,13 @@ function getMainHTML() {
             if (url.includes(workerDomain)) {
                 // Already on our domain, use as-is (avoid double-proxying)
                 fixedURL = url;
-                console.log('[Worker] Game URL is already on worker domain, using the link directly');
             } else if (url.includes('://')) {
                 // External URL - proxy it through worker
                 fixedURL = workerDomain + '/proxy/' + encodeURIComponent(url);
-                console.log('[Worker] External game URL detected, proxying the URL through worker');
             } else if (url.startsWith('/')) {
                 // Relative URL - keep it (will be proxied automatically)
                 fixedURL = url;
-                console.log('[Worker] Relative game URL, using as-is in the worker');
             }
-            
-            console.log('[Worker] Game loaded sucessfully via the Shadow DOM');
-            console.log('[Worker] Final game URL created by the worker:', fixedURL);
             
             createMultiLayerShadowFrame(fixedURL, true);
             
@@ -901,33 +900,25 @@ function getMainHTML() {
             }
         }
         
-        console.log('[Worker] Welcome to CLOUDMOON-INPLAY, a Cloudflare Workers proxy for Cloudmoon, developed by Sriail for low-recource systems. For more information, visit https://github.com/sriail/Cloudmoon-InPlay for our official repo!')
-        console.log('[Worker] CLOUDMOON-INPLAY Proxy is active; establishing conections, and proxying the current page content');
-        console.log('[Worker] Shadow DOM container establishing');
-        
         // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
             .then((registration) => {
-                console.log('[Worker] PWA Service Worker has been registered successfully');
                 
                 registration.addEventListener('updatefound', () => {
                     const newWorker = registration.installing;
                     newWorker.addEventListener('statechange', () => {
                         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            console.log('[Worker Updater] New version of CLOUDMOON-INPLAY is available! If you are the owner of this deployment, please manualy update the worker for the latest versions and updates. You can find more information at https://github.com/sriail/Cloudmoon-InPlay and https://developers.cloudflare.com/workers/configuration/versions-and-deployments/');
                         }
                     });
                 });
 
                 navigator.serviceWorker.ready.then(() => {
-                    console.log('[Worker] Service Worker is controlling the page for client navigation');
                 });
 
             })
             .catch((error) => {
-                console.log('[Worker] Navigational Service Worker registration failed:', error);
             });
     });
 }
@@ -1020,10 +1011,8 @@ const RUNTIME_CACHE = 'cloudmoon-runtime-v3';
 
 // Install event - cache essential resources
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installing the PWA from the current repo');
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      console.log('[Service Worker] Caching the app shell');
       // Cache critical resources; skip optional ones that may fail (e.g. proxied icons)
       const critical = ['/', '/manifest.json', '/sw.js'];
       const optional = ['/favicon.png', '/icon.svg', '/icon-192.png', '/icon-512.png'];
@@ -1033,7 +1022,6 @@ self.addEventListener('install', (event) => {
           fetch(url).then(res => {
             if (res && res.status === 200) return cache.put(url, res);
           }).catch((err) => {
-            console.log('[Service Worker] Optional resource have not been cached:', url, err);
           })
         )
       );
@@ -1044,13 +1032,11 @@ self.addEventListener('install', (event) => {
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] the PWA is currentley Activate');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE) {
-            console.log('[Service Worker] Removing the old site / PWA cache', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -1083,13 +1069,11 @@ self.addEventListener('fetch', (event) => {
           caches.open(RUNTIME_CACHE).then((cache) => {
             cache.put(event.request, responseToCache);
           }).catch((error) => {
-            console.error('[ServiceWorker] Cache put error:', error);
           });
         }
         return response;
       })
       .catch((error) => {
-        console.log('[Service Worker] Fetch failed, trying the local cache:', event.request.url);
         // If network fails, try to serve from cache
         return caches.match(event.request).then((response) => {
           if (response) {
