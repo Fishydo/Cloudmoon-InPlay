@@ -408,10 +408,60 @@ async function proxyCloudMoon(request) {
     }
   }
   
+  // Protect fullscreen button overlay from being modified
+  function protectFullscreenButton() {
+    // Create a style to protect the overlay from page modifications
+    if (!document.querySelector('#cm-fullscreen-protection')) {
+      const style = document.createElement('style');
+      style.id = 'cm-fullscreen-protection';
+      style.textContent = \`
+        #btn-dock {
+          position: fixed !important;
+          bottom: 18px !important;
+          left: 18px !important;
+          display: flex !important;
+          flex-direction: row !important;
+          gap: 10px !important;
+          z-index: 999999 !important;
+          transition: opacity 0.3s !important;
+        }
+        #btn-dock.hidden {
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+        .dock-btn {
+          width: 44px !important;
+          height: 44px !important;
+          border-radius: 50% !important;
+          border: none !important;
+          background: rgba(45, 45, 45, 0.85) !important;
+          backdrop-filter: blur(6px) !important;
+          -webkit-backdrop-filter: blur(6px) !important;
+          color: #e0e0e0 !important;
+          cursor: pointer !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.4) !important;
+          transition: background 0.2s, transform 0.15s !important;
+          position: relative !important;
+        }
+        .dock-btn:hover {
+          background: rgba(74, 74, 74, 0.95) !important;
+        }
+        .dock-btn:active {
+          transform: scale(0.93) !important;
+        }
+      \`;
+      document.head.appendChild(style);
+    }
+  }
+  
   // Run removal immediately
   removeAds();
   removeUIElements();
   hideSidebarItems();
+  protectFullscreenButton();
   
   // Run immediately
   fixButtons();
@@ -423,6 +473,7 @@ async function proxyCloudMoon(request) {
       removeAds();
       removeUIElements();
       hideSidebarItems();
+      protectFullscreenButton();
     });
   }
   
@@ -432,6 +483,7 @@ async function proxyCloudMoon(request) {
     removeAds();
     removeUIElements();
     hideSidebarItems();
+    protectFullscreenButton();
   });
   
   // Run every 200ms (balanced performance and ad blocking)
@@ -440,6 +492,7 @@ async function proxyCloudMoon(request) {
     removeAds();
     removeUIElements();
     hideSidebarItems();
+    protectFullscreenButton();
   }, 200);
   
   // MutationObserver
@@ -448,6 +501,7 @@ async function proxyCloudMoon(request) {
     removeAds();
     removeUIElements();
     hideSidebarItems();
+    protectFullscreenButton();
   });
   
   function startObserver() {
@@ -831,8 +885,8 @@ function getMainHTML() {
         let shadowRoots = [];
         let currentIframe = null;
         
-        const SANDBOX_HOME = 'allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock allow-top-navigation allow-orientation-lock allow-fullscreen';
-        const SANDBOX_GAME = 'allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock allow-top-navigation allow-orientation-lock allow-fullscreen';
+        const SANDBOX_HOME = 'allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock allow-top-navig[...]
+        const SANDBOX_GAME = 'allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock allow-top-navig[...]
         const ALLOW_PERMISSIONS = 'accelerometer; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; clipboard-read; clipboard-write; xr-spatial-tracking; gamepad';
         
         const SHADOW_LAYERS = 4;
