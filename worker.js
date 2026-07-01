@@ -827,12 +827,12 @@ function getMainHTML() {
         const btnDock = document.getElementById('btn-dock');
         
         let isShowingGame = false;
-        let mainURL = '/web.cloudmoonapp.com/';
+        let mainURL = '/proxy/' + encodeURIComponent('https://web.cloudmoonapp.com/');
         let shadowRoots = [];
         let currentIframe = null;
         
-        const SANDBOX_HOME = 'allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock allow-top-navig[...]
-        const SANDBOX_GAME = 'allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock allow-top-navig[...]
+        const SANDBOX_HOME = 'allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock allow-top-navigation allow-orientation-lock allow-fullscreen';
+        const SANDBOX_GAME = 'allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock allow-top-navigation allow-orientation-lock allow-fullscreen';
         const ALLOW_PERMISSIONS = 'accelerometer; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; clipboard-read; clipboard-write; xr-spatial-tracking; gamepad';
         
         const SHADOW_LAYERS = 4;
