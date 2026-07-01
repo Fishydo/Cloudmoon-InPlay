@@ -267,6 +267,92 @@ async function proxyCloudMoon(request) {
     });
   }
   
+  // Remove UI and ad elements (destructive)
+  function removeUIElements() {
+    const log = (...args) => console.log('[remove-script]', ...args);
+
+    // Safe remove helper
+    function safeRemove(el) {
+      try {
+        if (!el || !el.parentNode) return false;
+        el.parentNode.removeChild(el);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    // Remove by selector list
+    const SELECTORS = [
+      'aside.sidebar.svelte-w5x9zc',
+      '.nav-left.svelte-rfuq4y',
+      '.nav-right.svelte-rfuq4y',
+      '.pic-content.svelte-1ln9mzx',
+      '.in_content-class'
+    ];
+    SELECTORS.forEach(sel => {
+      try {
+        document.querySelectorAll(sel).forEach(el => {
+          if (safeRemove(el)) log('removed selector', sel, el);
+        });
+      } catch (e) { /* ignore */ }
+    });
+
+    // Remove elements whose class token starts with "pic-container"
+    try {
+      const all = Array.from(document.querySelectorAll('*'));
+      all.forEach(el => {
+        try {
+          if (!el.classList) return;
+          for (const cls of Array.from(el.classList)) {
+            if (cls && cls.startsWith('pic-container')) {
+              if (safeRemove(el)) log('removed class-prefix element', cls, el);
+              break;
+            }
+          }
+        } catch (e) {}
+      });
+    } catch (e) {}
+
+    // Remove .mpu-card elements that contain an .ad-label child or visible "AD" text
+    try {
+      document.querySelectorAll('.mpu-card').forEach(card => {
+        try {
+          // check for .ad-label child
+          if (card.querySelector && card.querySelector('.ad-label')) {
+            if (safeRemove(card)) log('removed mpu-card with .ad-label', card);
+            return;
+          }
+          // check for visible "AD" text among descendants
+          const text = (card.textContent || '').replace(/\\s+/g, ' ').trim();
+          if (text === 'AD' || /\\bAD\\b/.test(text)) {
+            if (safeRemove(card)) log('removed mpu-card with AD text', card);
+          }
+        } catch (e) {}
+      });
+    } catch (e) {}
+
+    // Remove sidebar buttons whose title matches "Full Screen with Ads" or "Remove Ads"
+    try {
+      const patterns = [/^full\\s*screen\\s*with\\s*ads$/i, /^remove\\s*ads$/i];
+      const candidates = Array.from(document.querySelectorAll('.sidebar-panel-item, .sidebar-panel-item.svelte-129hoe0, button.sidebar-btn'));
+      candidates.forEach(btn => {
+        try {
+          const titleEl = btn.querySelector('.sidebar-panel-title, .sidebar-text');
+          const raw = (titleEl ? titleEl.textContent : btn.textContent || '').replace(/\\s+/g, ' ').trim();
+          for (const re of patterns) {
+            if (re.test(raw)) {
+              if (safeRemove(btn)) log('removed sidebar button', raw, btn);
+              break;
+            }
+          }
+        } catch (e) {}
+      });
+    } catch (e) {}
+
+    log('Removal pass complete.');
+  }
+  
   // Hide sidebar items matching specific patterns
   function hideSidebarItems() {
     const TARGETS = [
@@ -322,8 +408,9 @@ async function proxyCloudMoon(request) {
     }
   }
   
-  // Run ad removal immediately
+  // Run removal immediately
   removeAds();
+  removeUIElements();
   hideSidebarItems();
   
   // Run immediately
@@ -334,6 +421,7 @@ async function proxyCloudMoon(request) {
     document.addEventListener("DOMContentLoaded", function() {
       fixButtons();
       removeAds();
+      removeUIElements();
       hideSidebarItems();
     });
   }
@@ -342,6 +430,7 @@ async function proxyCloudMoon(request) {
   window.addEventListener("load", function() {
     fixButtons();
     removeAds();
+    removeUIElements();
     hideSidebarItems();
   });
   
@@ -349,6 +438,7 @@ async function proxyCloudMoon(request) {
   setInterval(function() {
     fixButtons();
     removeAds();
+    removeUIElements();
     hideSidebarItems();
   }, 200);
   
@@ -356,6 +446,7 @@ async function proxyCloudMoon(request) {
   var observer = new MutationObserver(function() {
     fixButtons();
     removeAds();
+    removeUIElements();
     hideSidebarItems();
   });
   
@@ -740,8 +831,8 @@ function getMainHTML() {
         let shadowRoots = [];
         let currentIframe = null;
         
-        const SANDBOX_HOME = 'allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock allow-top-navigation allow-storage-access-by-user-activation';
-        const SANDBOX_GAME = 'allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock allow-top-navigation allow-storage-access-by-user-activation';
+        const SANDBOX_HOME = 'allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock allow-top-navig[...]
+        const SANDBOX_GAME = 'allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock allow-top-navig[...]
         const ALLOW_PERMISSIONS = 'accelerometer; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; clipboard-read; clipboard-write; xr-spatial-tracking; gamepad';
         
         const SHADOW_LAYERS = 4;
